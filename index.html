@@ -133,7 +133,6 @@
         .btn-pdf {
             background: #6c757d;
             box-shadow: 0 4px 6px rgba(108, 117, 125, 0.15);
-            margin-left: 10px;
         }
 
         .btn-pdf:hover {
@@ -249,14 +248,6 @@
             th, td { padding: 10px 12px; font-size: 12px; }
             .btn-pdf { margin-left: 0; margin-top: 10px; width: 100%; }
         }
-
-        /* ESTILOS EXCLUSIVOS PARA A IMPRESSÃO / GERADOR DE PDF */
-        @media print {
-            body { background: white; padding: 0; }
-            .btn, .btn-logout, #caixa-login, .panel-header button, a.btn { display: none !important; }
-            .card { box-shadow: none; border: 1px solid #ccc; margin-bottom: 15px; page-break-inside: avoid; }
-            .container { display: block !important; max-width: 100%; }
-        }
     </style>
 </head>
 <body>
@@ -295,12 +286,11 @@
     </div>
 
     <div class="card" style="border-left: 5px solid var(--success);">
-        <h3>Fechamento de Competência / Relatório Mensal</h3>
+        <h3>Fechamento de Competência / Relatório Mensal (30 Dias)</h3>
         <p style="font-size: 14px; color: var(--text-secondary); font-weight: normal; margin-top: 5px; margin-bottom: 15px;">
-            Clique no botão abaixo para consolidar o consumo total agrupado por Cartão RFID.
+            Clique no botão abaixo para consolidar o consumo total dos últimos 30 dias agrupado por Cartão RFID.
         </p>
         
-        <!-- BOTÃO DE IMPRIMIR / PDF ADICIONADO AO LADO -->
         <div style="display: flex; flex-wrap: wrap; gap: 10px;">
             <button class="btn btn-accent" id="btn-fechamento" onclick="processarFechamentoMensal()">Realizar Fechamento Mensal</button>
             <button class="btn btn-pdf" id="btn-gerar-pdf" onclick="gerarPDFRelatorio()" style="display: none;">📄 Baixar Relatório em PDF</button>
@@ -311,9 +301,8 @@
         <table id="tabela-fechamento" style="display: none; margin-top: 25px;">
             <thead>
                 <tr>
-                    <th>ID Ciclo</th>
                     <th>Cartão RFID</th>
-                    <th>Total Consumido no Período</th>
+                    <th>Consumo Úlitmos 30 Dias</th>
                 </tr>
             </thead>
             <tbody id="corpo-fechamento"></tbody>
@@ -341,6 +330,7 @@
 
 <script>
     const URL_GAS = 'https://script.google.com/macros/s/AKfycbzqAFE2oFEOrq6eYljLi7qdUNrLDeaoMUTGMNr5c3EQ11j5IYy_m3uGOkIs15QPFQmRbg/exec';
+    let ultimosDadosFechamento = []; // Armazena os dados dos últimos 30 dias para exportação
 
     window.onload = function() {
         if (sessionStorage.getItem('adminLogado') === 'true') {
@@ -443,11 +433,11 @@
         const corpoFechamento = document.getElementById('corpo-fechamento');
         const senha = sessionStorage.getItem('adminSenha');
 
-        if (!confirm("Tem certeza que deseja processar o faturamento agora? Esta ação gravará o consumo total agrupado por cartão.")) {
+        if (!confirm("Deseja consolidar o consumo dos últimos 30 dias para cada cartão RFID?")) {
             return;
         }
 
-        btn.innerText = "Processando Fechamento...";
+        btn.innerText = "Calculando últimos 30 dias...";
         btn.disabled = true;
         msg.style.display = "none";
         btnPdf.style.display = "none";
@@ -455,41 +445,130 @@
         try {
             const resposta = await fetch(URL_GAS, {
                 method: 'POST',
-                body: JSON.stringify({ vaga: "ADMIN", senha: senha, acao: "realizar_fechamento_mes" })
+                body: JSON.stringify({ vaga: "ADMIN", senha: senha, acao: "buscar_todos_os_dados" })
             });
             const resultado = await resposta.json();
 
             if (resultado.status === "sucesso") {
-                msg.innerText = "✓ " + resultado.mensagem;
-                msg.style.display = "block";
-                
-                corpoFechamento.innerHTML = "";
+                const limite30Dias = new Date();
+                limite30Dias.setDate(limite30Dias.getDate() - 30);
+
+                const consumoPorCartao = {};
+
+                // Filtra leituras ocorridas nos últimos 30 dias e agrupa por cartão RFID
                 resultado.dados.forEach(item => {
-                    corpoFechamento.innerHTML += `<tr>
-                        <td><strong>#${item.idFechamento}</strong></td>
-                        <td><strong>${item.cartao}</strong></td>
-                        <td style="color: var(--success); font-weight: bold;">${item.totalConsumido.toFixed(3)} kWh</td>
-                    </tr>`;
+                    const dataLeitura = new Date(item.data);
+                    const cartao = String(item.cartao || "N/A").toUpperCase().trim();
+
+                    if (dataLeitura >= limite30Dias && cartao !== "" && cartao !== "N/A") {
+                        if (!consumoPorCartao[cartao]) {
+                            consumoPorCartao[cartao] = 0;
+                        }
+                        consumoPorCartao[cartao] += parseFloat(item.consumo) || 0;
+                    }
                 });
-                
+
+                corpoFechamento.innerHTML = "";
+                ultimosDadosFechamento = [];
+
+                for (let cartao in consumoPorCartao) {
+                    const totalConsumido = consumoPorCartao[cartao];
+                    ultimosDadosFechamento.push({ cartao, totalConsumido });
+
+                    corpoFechamento.innerHTML += `<tr>
+                        <td><strong>${cartao}</strong></td>
+                        <td style="color: var(--success); font-weight: bold;">${totalConsumido.toFixed(3)} kWh</td>
+                    </tr>`;
+                }
+
+                if (ultimosDadosFechamento.length === 0) {
+                    corpoFechamento.innerHTML = "<tr><td colspan='2' style='text-align: center;'>Nenhum registro encontrado nos últimos 30 dias.</td></tr>";
+                }
+
+                msg.innerText = "✓ Relatório dos últimos 30 dias gerado com sucesso!";
+                msg.style.display = "block";
                 tabela.style.display = "table";
-                btnPdf.style.display = "inline-flex"; // EXIBE O BOTÃO DO PDF
-                carregarDadosGlobais();
+                btnPdf.style.display = "inline-flex";
             } else {
                 alert("Erro: " + resultado.mensagem);
             }
         } catch (error) {
             console.error(error);
-            alert("Erro crítico de comunicação com o Google Apps Script.");
+            alert("Erro de comunicação com o servidor.");
         } finally {
             btn.innerText = "Realizar Fechamento Mensal";
             btn.disabled = false;
         }
     }
 
-    // FUNÇÃO QUE DISPARA A IMPRESSÃO / SALVAMENTO EM PDF
+    // IMPRIME / GERA PDF APENAS DO RELATÓRIO DE FECHAMENTO
     function gerarPDFRelatorio() {
-        window.print();
+        if (ultimosDadosFechamento.length === 0) {
+            alert("Não há dados de fechamento para gerar PDF.");
+            return;
+        }
+
+        const dataHoje = new Date().toLocaleDateString('pt-BR');
+        let linhasTabela = "";
+
+        ultimosDadosFechamento.forEach(item => {
+            linhasTabela += `
+                <tr>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd;"><strong>${item.cartao}</strong></td>
+                    <td style="padding: 10px; border-bottom: 1px solid #ddd; color: #28a745; font-weight: bold;">${item.totalConsumido.toFixed(3)} kWh</td>
+                </tr>`;
+        });
+
+        const janelaImpressao = window.open('', '_blank', 'width=800,height=600');
+        janelaImpressao.document.write(`
+            <!DOCTYPE html>
+            <html lang="pt-BR">
+            <head>
+                <meta charset="UTF-8">
+                <title>Relatório de Fechamento Mensal - AbrangeBox</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 30px; color: #333; }
+                    .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #0056b3; padding-bottom: 15px; }
+                    h2 { color: #0056b3; margin-bottom: 5px; }
+                    p { font-size: 14px; color: #666; margin: 0; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                    th { background-color: #f8fafc; text-align: left; padding: 10px; border-bottom: 2px solid #ddd; font-size: 13px; }
+                    .footer { margin-top: 40px; font-size: 12px; text-align: center; color: #888; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>AbrangeBox - Relatório de Fechamento</h2>
+                    <p>Consumo Agrupado por RFID (Últimos 30 Dias)</p>
+                    <p><strong>Data de Emissão:</strong> ${dataHoje}</p>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Cartão RFID</th>
+                            <th>Consumo Consolidado (kWh)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${linhasTabela}
+                    </tbody>
+                </table>
+
+                <div class="footer">
+                    <p>Relatório gerado automaticamente pelo Sistema de Controle AbrangeBox.</p>
+                </div>
+
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() { window.close(); };
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+        janelaImpressao.document.close();
     }
 
     function efetuarLogout() {
