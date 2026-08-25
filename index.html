@@ -130,6 +130,16 @@
             background-color: var(--success-hover); 
         }
 
+        .btn-pdf {
+            background: #6c757d;
+            box-shadow: 0 4px 6px rgba(108, 117, 125, 0.15);
+            margin-left: 10px;
+        }
+
+        .btn-pdf:hover {
+            background-color: #5a6268;
+        }
+
         .btn-logout { 
             background-color: var(--danger); 
             box-shadow: 0 4px 6px rgba(220, 53, 69, 0.15);
@@ -237,6 +247,15 @@
             .panel-header { flex-direction: column; gap: 15px; text-align: center; }
             h1 { font-size: 20px; }
             th, td { padding: 10px 12px; font-size: 12px; }
+            .btn-pdf { margin-left: 0; margin-top: 10px; width: 100%; }
+        }
+
+        /* ESTILOS EXCLUSIVOS PARA A IMPRESSÃO / GERADOR DE PDF */
+        @media print {
+            body { background: white; padding: 0; }
+            .btn, .btn-logout, #caixa-login, .panel-header button, a.btn { display: none !important; }
+            .card { box-shadow: none; border: 1px solid #ccc; margin-bottom: 15px; page-break-inside: avoid; }
+            .container { display: block !important; max-width: 100%; }
         }
     </style>
 </head>
@@ -280,7 +299,13 @@
         <p style="font-size: 14px; color: var(--text-secondary); font-weight: normal; margin-top: 5px; margin-bottom: 15px;">
             Clique no botão abaixo para consolidar o consumo total agrupado por Cartão RFID.
         </p>
-        <button class="btn btn-accent" id="btn-fechamento" onclick="processarFechamentoMensal()">Realizar Fechamento Mensal</button>
+        
+        <!-- BOTÃO DE IMPRIMIR / PDF ADICIONADO AO LADO -->
+        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+            <button class="btn btn-accent" id="btn-fechamento" onclick="processarFechamentoMensal()">Realizar Fechamento Mensal</button>
+            <button class="btn btn-pdf" id="btn-gerar-pdf" onclick="gerarPDFRelatorio()" style="display: none;">📄 Baixar Relatório em PDF</button>
+        </div>
+
         <div id="msg-fechamento" class="txt-sucesso" style="display: none;"></div>
         
         <table id="tabela-fechamento" style="display: none; margin-top: 25px;">
@@ -412,6 +437,7 @@
 
     async function processarFechamentoMensal() {
         const btn = document.getElementById('btn-fechamento');
+        const btnPdf = document.getElementById('btn-gerar-pdf');
         const msg = document.getElementById('msg-fechamento');
         const tabela = document.getElementById('tabela-fechamento');
         const corpoFechamento = document.getElementById('corpo-fechamento');
@@ -424,6 +450,7 @@
         btn.innerText = "Processando Fechamento...";
         btn.disabled = true;
         msg.style.display = "none";
+        btnPdf.style.display = "none";
 
         try {
             const resposta = await fetch(URL_GAS, {
@@ -446,6 +473,7 @@
                 });
                 
                 tabela.style.display = "table";
+                btnPdf.style.display = "inline-flex"; // EXIBE O BOTÃO DO PDF
                 carregarDadosGlobais();
             } else {
                 alert("Erro: " + resultado.mensagem);
@@ -457,6 +485,11 @@
             btn.innerText = "Realizar Fechamento Mensal";
             btn.disabled = false;
         }
+    }
+
+    // FUNÇÃO QUE DISPARA A IMPRESSÃO / SALVAMENTO EM PDF
+    function gerarPDFRelatorio() {
+        window.print();
     }
 
     function efetuarLogout() {
