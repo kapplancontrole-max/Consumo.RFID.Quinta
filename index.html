@@ -56,12 +56,11 @@
         }
 
         .panel-logo {
-                max-width: 280px;
-                width: 100%;
-                max-height: none;
-                height: auto;
-                margin: 0 auto;
-            
+            max-width: 280px;
+            width: 100%;
+            max-height: none;
+            height: auto;
+            margin: 0 auto;
         }
 
         h1 {
@@ -112,12 +111,12 @@
             text-decoration: none; 
             border-radius: 30px; 
             font-weight: 600; 
-            font-size: 14px;
+            font-size: 15px;
             border: none; 
             cursor: pointer; 
             transition: background 0.2s, transform 0.1s; 
             box-shadow: 0 4px 6px rgba(0, 86, 179, 0.15);
-            min-height: 44px;
+            min-height: 48px;
             width: auto;
         }
 
@@ -185,20 +184,21 @@
             display: block;
         }
 
+        /* CAIXA DE LOGIN OTIMIZADA PARA MÓVEL */
         .login-box { 
             background: white; 
-            padding: clamp(25px, 5vw, 40px) clamp(20px, 4vw, 35px); 
+            padding: clamp(20px, 5vw, 35px); 
             border-radius: 20px; 
             box-shadow: 0 10px 30px rgba(0, 86, 179, 0.08); 
             width: 100%; 
             max-width: 400px; 
             border: 1px solid var(--border); 
             text-align: center; 
-            margin: 4vh auto 0; 
+            margin: 2vh auto 0; 
         }
 
         .login-box h3 {
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 800;
             color: var(--text);
             margin-bottom: 5px;
@@ -206,18 +206,23 @@
 
         .login-box input { 
             width: 100%; 
-            padding: 14px; 
+            padding: 16px; 
             margin-top: 8px; 
             margin-bottom: 20px; 
-            border: 1px solid #cbd5e1; 
+            border: 2px solid #cbd5e1; 
             border-radius: 12px; 
-            font-size: 16px; /* Evita zoom automático no iOS */
+            font-size: 18px; 
+            font-weight: 600;
+            letter-spacing: 1px;
+            color: var(--text);
             background-color: #f8fafc; 
+            text-align: center;
         }
 
         .login-box input:focus {
             outline: none;
             border-color: var(--primary);
+            background-color: #ffffff;
         }
 
         .login-box label { 
@@ -225,12 +230,17 @@
             display: block; 
             text-align: left; 
             color: var(--text); 
-            font-size: 12px; 
+            font-size: 13px; 
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         /* OTIMIZAÇÃO MÓVEL VIA MEDIA QUERIES */
         @media (max-width: 640px) {
+            body {
+                padding: 12px;
+            }
+
             .panel-header {
                 flex-direction: column;
                 align-items: stretch;
@@ -238,7 +248,7 @@
             }
 
             .panel-logo {
-                max-height: 80px;
+                max-width: 220px;
                 margin: 0 auto;
             }
 
@@ -257,7 +267,7 @@
             }
 
             .responsive-table thead {
-                display: none; /* Oculta o cabeçalho original da tabela */
+                display: none;
             }
 
             .responsive-table tr {
@@ -283,7 +293,6 @@
                 border-bottom: none;
             }
 
-            /* Insere o nome da coluna via atributo data-label */
             .responsive-table td::before {
                 content: attr(data-label);
                 font-weight: 700;
@@ -300,13 +309,14 @@
 
 <div class="login-box" id="caixa-login">
     <div style="margin-bottom: 20px;">
-        <img src="logo.png" alt="Logo" style="max-width: 280px; height: auto; object-fit: contain;">
+        <img src="logo.png" alt="Logo" style="max-width: 100%; height: auto; max-height: 80px; object-fit: contain;">
     </div>
     <h3>Painel de Controle</h3>
     <p style="color: var(--text-secondary); font-size: 13px; margin-bottom: 20px;">Acesso restrito ao administrador</p>
     <form onsubmit="autenticarAdmin(event)">
         <label for="senha-admin">Código de Acesso:</label>
-        <input type="password" id="senha-admin" placeholder="Digite o código" required>
+        <!-- Alterado para type="text" para exibir o código sem ocultação por asteriscos/pontos -->
+        <input type="text" id="senha-admin" placeholder="Digite o código" required autocomplete="off" autocorrect="off" autocapitalize="none">
         <div id="erro-login" style="color: var(--danger); font-size: 13px; margin-bottom: 15px; display: none; font-weight: 700;"></div>
         <button type="submit" class="btn" id="btn-entrar" style="width: 100%;">Entrar no Sistema</button>
     </form>
@@ -406,7 +416,7 @@
                 sessionStorage.setItem('adminSenha', senha);
                 exibirDashboard();
             } else {
-                erro.innerText = resultado.mensagem || "Senha Master incorreta!";
+                erro.innerText = resultado.mensagem || "Código de acesso incorreto!";
                 erro.style.display = 'block';
                 btn.innerText = 'Entrar no Sistema';
                 btn.disabled = false;
